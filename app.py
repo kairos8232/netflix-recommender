@@ -30,3 +30,21 @@ df["genres"] = df["genres"].fillna("").apply(
 df["vote_average"] = pd.to_numeric(df["vote_average"], errors="coerce").fillna(
     df["vote_average"].median()
 )
+
+def recommend(favorites, top_n=5, genre_weight=2, min_overlap=1):
+    favs = df[df["title"].isin(favorites)]
+    fav_genres = set(g for row in favs["genres"] for g in row)
+    fav_rating = favs["vote_average"].mean()
+    results = []
+    for _, row in df.iterrows():
+        if row["title"] in favorites:
+            continue
+        overlap = len(fav_genres.intersection(row["genres"]))
+        if overlap < min_overlap:
+            continue
+        rating_sim = 1 - abs(row["vote_average"] - fav_rating) / 10
+        score = genre_weight * overlap + rating_sim
+        results.append((row["title"], row["release_year"],
+                        ", ".join(row["genres"]), row["vote_average"], score))
+    recs = sorted(results, key=lambda x: x[4], reverse=True)[:top_n]
+    return pd.DataFrame(recs, columns=["Title", "Year", "Genres", "Rating", "Score"])
