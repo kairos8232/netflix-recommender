@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 DEFAULTS = {"favorites": [], "genre_weight": 2, "min_overlap": 1, "top_n": 5}
@@ -20,4 +21,12 @@ def restore_from_snapshot():
         for k, v in snap.items():
             st.session_state[k] = v
 
-st.title("🎬 Netflix Recommendation")
+df = pd.read_csv("netflix_combined.csv")
+
+# Preprocess genres and ratings
+df["genres"] = df["genres"].fillna("").apply(
+    lambda x: [g.strip() for g in str(x).split(",") if g.strip()]
+)
+df["vote_average"] = pd.to_numeric(df["vote_average"], errors="coerce").fillna(
+    df["vote_average"].median()
+)
