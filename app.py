@@ -1,6 +1,62 @@
 import pandas as pd
 import streamlit as st
 
+# --- Styling (full) ---
+CARD_CSS = """
+<style>
+.rec-card{padding:.75rem 1rem;margin-bottom:.6rem;border:1px solid #2a3542;border-radius:10px;
+background:linear-gradient(135deg,#1f2933,#131b22);box-shadow:0 2px 4px rgba(0,0,0,.35);}
+.rec-rank{font-size:.8rem;font-weight:600;color:#ff4b4b;letter-spacing:.5px;}
+.rec-title{font-size:1rem;font-weight:600;margin:0;color:#fff;}
+.rec-meta{font-size:.7rem;color:#c7d1dc;margin-top:.15rem;}
+.score-badge{float:right;background:#ffb300;color:#1a1a1a;padding:2px 10px;border-radius:14px;
+font-size:.7rem;font-weight:700;box-shadow:0 0 0 1px #e09f00 inset;}
+.genres{margin-top:.35rem;}
+.genre-badge{display:inline-block;background:#304055;color:#e5ecf3;padding:2px 6px;margin:2px 4px 0 0;
+border-radius:6px;font-size:.6rem;font-weight:500;}
+.after-results .stSlider, .after-results .stMultiSelect { margin-bottom:.55rem; }
+</style>
+"""
+st.markdown(CARD_CSS, unsafe_allow_html=True)
+
+EXTRA_CSS = """
+<style>
+.main-wrap { max-width: 1150px; margin: 0 auto; }
+.results-panel, .filter-panel-initial { width: 100%; }
+.filter-narrow { padding-right: 0.75rem; }
+.filter-narrow .stSlider, .filter-narrow .stMultiSelect { margin-bottom: .55rem; }
+.results-panel .rec-card { margin-right:4px; }
+</style>
+"""
+st.markdown(EXTRA_CSS, unsafe_allow_html=True)
+
+FONT_OVERRIDES = """
+<style>
+  .rec-title { font-size: 1.2rem; }
+  .rec-meta { font-size: 0.9rem; }
+  .genre-badge { font-size: 0.8rem; }
+  .score-badge { font-size: 0.85rem; }
+  .rec-rank { font-size: 0.95rem; }
+</style>
+"""
+st.markdown(FONT_OVERRIDES, unsafe_allow_html=True)
+
+LABEL_OVERRIDES = """
+<style>
+  [data-testid="stWidgetLabel"],
+  [data-testid="stWidgetLabel"] * {
+    font-size: 1.2rem !important;
+    line-height: 1.3 !important;
+  }
+  [data-testid="stWidgetLabel"] p,
+  [data-testid="stWidgetLabel"] label {
+    font-weight: 400 !important;
+    margin-bottom: .15rem !important;
+  }
+</style>
+"""
+st.markdown(LABEL_OVERRIDES, unsafe_allow_html=True)
+
 # --- Session defaults & helpers ---
 DEFAULTS = {"favorites": [], "genre_weight": 2, "min_overlap": 1, "top_n": 5}
 for k, v in DEFAULTS.items():
