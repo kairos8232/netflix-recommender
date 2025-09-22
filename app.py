@@ -181,7 +181,7 @@ with st.container():
             help="Filters out titles that don't share enough genres with your favorites."
         )
         st.slider(
-            "Number of recommendations", 3, 20, 5, 1, key="top_n",
+            "Number of recommendations", 3, 20, key="top_n",
             help="Number of top-ranked recommendations to display."
         )
 
