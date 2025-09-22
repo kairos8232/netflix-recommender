@@ -1,7 +1,33 @@
 import pandas as pd
 import streamlit as st
 
-# --- Styling (full) ---
+# --- Session state (added) ---
+if "show_results" not in st.session_state:
+    st.session_state.show_results = False
+if "recs_df" not in st.session_state:
+    st.session_state.recs_df = None
+# Add defaults and ensure inputs exist in session state
+DEFAULTS = {"favorites": [], "genre_weight": 2, "min_overlap": 1, "top_n": 5}
+for k, v in DEFAULTS.items():
+    st.session_state.setdefault(k, v)
+
+def reset_inputs_to_defaults():
+    for k, v in DEFAULTS.items():
+        st.session_state[k] = v
+
+# Snapshot helpers (add)
+if "snapshot" not in st.session_state:
+    st.session_state.snapshot = None
+
+def snapshot_inputs():
+    st.session_state.snapshot = {k: st.session_state.get(k) for k in DEFAULTS.keys()}
+
+def restore_from_snapshot():
+    snap = st.session_state.get("snapshot")
+    if snap:
+        for k, v in snap.items():
+            st.session_state[k] = v
+
 CARD_CSS = """
 <style>
 .rec-card{padding:.75rem 1rem;margin-bottom:.6rem;border:1px solid #2a3542;border-radius:10px;
@@ -14,24 +40,28 @@ font-size:.7rem;font-weight:700;box-shadow:0 0 0 1px #e09f00 inset;}
 .genres{margin-top:.35rem;}
 .genre-badge{display:inline-block;background:#304055;color:#e5ecf3;padding:2px 6px;margin:2px 4px 0 0;
 border-radius:6px;font-size:.6rem;font-weight:500;}
+/* Optional: slight narrowing of filter column ONLY after results */
 .after-results .stSlider, .after-results .stMultiSelect { margin-bottom:.55rem; }
 </style>
 """
 st.markdown(CARD_CSS, unsafe_allow_html=True)
-
 EXTRA_CSS = """
 <style>
+/* Constrain overall content to a readable max width */
 .main-wrap { max-width: 1150px; margin: 0 auto; }
 .results-panel, .filter-panel-initial { width: 100%; }
 .filter-narrow { padding-right: 0.75rem; }
 .filter-narrow .stSlider, .filter-narrow .stMultiSelect { margin-bottom: .55rem; }
+/* Give right pane breathing room */
 .results-panel .rec-card { margin-right:4px; }
 </style>
 """
 st.markdown(EXTRA_CSS, unsafe_allow_html=True)
 
+# Larger fonts for recommendation card details (overrides)
 FONT_OVERRIDES = """
 <style>
+  /* Increase sizes for detail info on cards */
   .rec-title { font-size: 1.2rem; }
   .rec-meta { font-size: 0.9rem; }
   .genre-badge { font-size: 0.8rem; }
@@ -41,8 +71,10 @@ FONT_OVERRIDES = """
 """
 st.markdown(FONT_OVERRIDES, unsafe_allow_html=True)
 
+# Larger labels for filter widgets (global, robust)
 LABEL_OVERRIDES = """
 <style>
+  /* Make all widget labels bigger across the app */
   [data-testid="stWidgetLabel"],
   [data-testid="stWidgetLabel"] * {
     font-size: 1.2rem !important;
@@ -50,44 +82,20 @@ LABEL_OVERRIDES = """
   }
   [data-testid="stWidgetLabel"] p,
   [data-testid="stWidgetLabel"] label {
-    font-weight: 400 !important;
+    font-weight: 400 !important; /* was 700 */
     margin-bottom: .15rem !important;
   }
 </style>
 """
 st.markdown(LABEL_OVERRIDES, unsafe_allow_html=True)
 
-# --- Session defaults & helpers ---
-DEFAULTS = {"favorites": [], "genre_weight": 2, "min_overlap": 1, "top_n": 5}
-for k, v in DEFAULTS.items():
-    st.session_state.setdefault(k, v)
-st.session_state.setdefault("show_results", False)
-st.session_state.setdefault("recs_df", None)
-st.session_state.setdefault("snapshot", None)
-
-def reset_inputs_to_defaults():
-    for k, v in DEFAULTS.items():
-        st.session_state[k] = v
-
-def snapshot_inputs():
-    st.session_state.snapshot = {k: st.session_state.get(k) for k in DEFAULTS.keys()}
-
-def restore_from_snapshot():
-    snap = st.session_state.get("snapshot")
-    if snap:
-        for k, v in snap.items():
-            st.session_state[k] = v
-
-# --- Database loading ---
+# Load combined dataset
 df = pd.read_csv("netflix_combined.csv")
-df["genres"] = df["genres"].fillna("").apply(
-    lambda x: [g.strip() for g in str(x).split(",") if g.strip()]
-)
-df["vote_average"] = pd.to_numeric(df["vote_average"], errors="coerce").fillna(
-    df["vote_average"].median()
-)
 
-# --- Recommendation function ---
+# Preprocess genres
+df["genres"] = df["genres"].fillna("").apply(lambda x: [g.strip() for g in str(x).split(",") if g.strip()])
+df["vote_average"] = pd.to_numeric(df["vote_average"], errors="coerce").fillna(df["vote_average"].median())
+
 def recommend(favorites, top_n=5, genre_weight=2, min_overlap=1):
     favs = df[df["title"].isin(favorites)]
     fav_genres = set(g for row in favs["genres"] for g in row)
@@ -101,12 +109,10 @@ def recommend(favorites, top_n=5, genre_weight=2, min_overlap=1):
             continue
         rating_sim = 1 - abs(row["vote_average"] - fav_rating) / 10
         score = genre_weight * overlap + rating_sim
-        results.append((row["title"], row["release_year"],
-                        ", ".join(row["genres"]), row["vote_average"], score))
+        results.append((row["title"], row["release_year"], ", ".join(row["genres"]), row["vote_average"], score))
     recs = sorted(results, key=lambda x: x[4], reverse=True)[:top_n]
     return pd.DataFrame(recs, columns=["Title", "Year", "Genres", "Rating", "Score"])
 
-# --- Results rendering ---
 def render_recommendations(df_recs: pd.DataFrame):
     if df_recs is None or df_recs.empty:
         st.info("No matches under current filters.")
@@ -127,19 +133,18 @@ def render_recommendations(df_recs: pd.DataFrame):
         </div>
         """, unsafe_allow_html=True)
 
-# --- Page UI ---
 st.title("🎬 Netflix Recommendation")
 
 with st.container():
     st.markdown("<div class='main-wrap'>", unsafe_allow_html=True)
 
     if st.session_state.show_results:
-        # Back & Reset buttons
+        # --- Results-only page: Back (keeps inputs) and Reset (defaults) ---
         btn_left, btn_right = st.columns([1, 1])
         with btn_left:
             if st.button("← Back to filters", use_container_width=True):
                 restore_from_snapshot()
-                st.session_state.show_results = False
+                st.session_state.show_results = False 
                 st.rerun()
         with btn_right:
             if st.button("Reset filters", use_container_width=True):
@@ -148,11 +153,8 @@ with st.container():
                 st.session_state.show_results = False
                 st.rerun()
 
-        # Results
         st.write("### 🎯 Recommended for you")
         render_recommendations(st.session_state.recs_df)
-
-        # Explanation
         with st.expander("ℹ️ How are recommendation scores calculated?"):
             st.latex(r"\text{Score} = \text{genre\_points} + \text{rating\_points}")
             st.latex(r"\text{genre\_points} = \text{genre\_weight} \times \text{shared\_genres}")
@@ -164,7 +166,7 @@ with st.container():
             )
 
     else:
-        # Input UI
+        # --- Filter page (unchanged layout), values persist via keys ---
         st.markdown("<div class='filter-panel-initial'>", unsafe_allow_html=True)
         st.multiselect(
             "Select favorite titles", df["title"].unique(), key="favorites",
@@ -175,7 +177,7 @@ with st.container():
             help="Higher = shared genres matter more in the score."
         )
         st.slider(
-            "Minimum genre overlap", 0, 3, 1, 1, key="min_overlap",
+            "Minimum genre overlap", 0, 3, key="min_overlap",
             help="Filters out titles that don't share enough genres with your favorites."
         )
         st.slider(
@@ -184,20 +186,24 @@ with st.container():
         )
 
         recommend_clicked = st.button("Recommend")
+
         if recommend_clicked:
             if st.session_state.favorites:
-                snapshot_inputs()
-                st.session_state.recs_df = recommend(
-                    st.session_state.favorites,
-                    st.session_state.top_n,
-                    st.session_state.genre_weight,
-                    st.session_state.min_overlap
-                )
-                st.session_state.show_results = True
-                st.rerun()
+                with st.spinner("Generating recommendations..."):
+                    try:
+                        snapshot_inputs()   
+                        st.session_state.recs_df = recommend(
+                            st.session_state.favorites,
+                            st.session_state.top_n,
+                            st.session_state.genre_weight,
+                            st.session_state.min_overlap
+                        )
+                        st.session_state.show_results = True
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error generating recommendations: {e}")
             else:
                 st.warning("Please select at least one title.")
-
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
