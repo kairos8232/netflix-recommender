@@ -10,9 +10,7 @@ This project uses a simple scoring approach — no machine learning required!
 ## 📂 Dataset Source
 
 Data comes from Kaggle:
-
-> [Netflix Movies and TV Shows Dataset (Up to 2025)] 
-> *https://www.kaggle.com/datasets/bhargavchirumamilla/netflix-movies-and-tv-shows-till-2025/*
+> [Netflix Movies and TV shows till 2025](https://www.kaggle.com/datasets/bhargavchirumamilla/netflix-movies-and-tv-shows-till-2025/)
 
 Downloaded files:
 - `netflix_movies_detailed_up_to_2025.csv`
